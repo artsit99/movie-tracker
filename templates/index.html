@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Tracker</title>
+    <meta name="description" content="Track movies you've watched">
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.6"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Movie Tracker</h1>
+            <p class="subtitle">Built with Rust & SQLite</p>
+        </header>
+
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Total Movies</span>
+                <span class="stat-value">{total}</span>
+            </div>
+            <div class="stat-item watched">
+                <span class="stat-label">Watched</span>
+                <span class="stat-value">{watched}</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <form hx-post="/api/seed" hx-target="#seed-result" hx-indicator="#seed-loading">
+                <button type="submit" class="btn-primary">
+                    <span id="seed-loading" class="icon">▶</span> 
+                    Seed Data (2000-2025)
+                </button>
+                <span id="seed-result" class="feedback"></span>
+            </form>
+            <div class="search-box">
+                <input type="text" placeholder="Search movies..."
+                       hx-get="/api/search?q={={this.value}}"
+                       hx-trigger="keyup changed, search"
+                       hx-target="#movies-list"
+                       hx-indicator="#search-indicator">
+                <span id="search-indicator">🔍</span>
+            </div>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="watched">Watched</button>
+            <button class="filter-btn" data-filter="unwatched">Unwatched</button>
+        </div>
+
+        <div class="movie-list" id="movies-list">
+            {% if movies.iter().any(|m| m.year > 2000) %}
+                {% for movie in movies %}
+                <div class="movie-item" data-filter="all watched unwatched" data-year="{movie.year}">
+                    <div class="movie-info">
+                        {% if movie.year.0 > 2000 %}
+                            <span class="movie-year">{movie.year}</span>
+                        {% endif %}
+                        <span class="movie-title">{movie.title}</span>
+                        {% if let Some(ref url) = movie.wiki_url %}
+                            <a href="{url}" target="_blank" class="wiki-link" title="View on Wikipedia">🌐</a>
+                        {% endif %}
+                    </div>
+                    <label class="watched-toggle">
+                        <input type="checkbox" 
+                               checked="{movie.is_watched}"
+                               hx-post="/api/movies/{movie.id}/toggle"
+                               hx-confirm="Mark '{movie.title}' as watched?"
+                               hx-target="this.closest('.movie-item')"
+                               hx-swap="outerHTML"
+                               hx-indicator="#t-indicator">
+                        <span class="indicator">★</span>
+                    </label>
+                    <span class="toggle-indicator" id="t-indicator">↻</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>No movies yet!</p>
+                    <p class="hint">Click "Seed Data" to start adding movies from Wikipedia.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <footer>
+            <small>Built with Rust • Axum • SQLite</small>
+        </footer>
+    </div>
+</body>
+</html>
